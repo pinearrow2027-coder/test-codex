@@ -18,7 +18,7 @@ const COLORS = {
   digital: "#2563eb",
   sns: "#ec4899",       // SNS投稿（企業）
   search: "#7c3aed",
-  tweets: "#22c55e",   // UGC
+  tweets: "#22c55e",    // UGC
   sales: "#111827",
   profit: "#16a34a",
   base: "#94a3b8",
@@ -134,6 +134,26 @@ function Slider({
   );
 }
 
+function Button({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        width: "100%",
+        padding: "10px 12px",
+        borderRadius: 12,
+        border: "1px solid #e5e5e5",
+        background: "#111827",
+        color: "#fff",
+        fontWeight: 900,
+        cursor: "pointer",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
 /* =====================
   ダミー係数（説明用）
 ===================== */
@@ -221,100 +241,148 @@ const diff = (a: number, b: number, f: (n: number) => string) =>
   `${b - a >= 0 ? "+" : "-"}${f(Math.abs(b - a))}`;
 
 /* =====================
+  最適配分探索（総予算固定で粗利最大）
+===================== */
+function findBestMix({
+  totalBudget,
+  days,
+  snsPosts,
+  stepPct = 5,
+}: {
+  totalBudget: number;
+  days: number;
+  snsPosts: number;
+  stepPct?: number;
+}) {
+  let best = {
+    tv: totalBudget * 0.5,
+    digital: totalBudget * 0.5,
+    sum: { search: 0, tweets: 0, sales: 0, profit: -Infinity },
+    pctDigital: 50,
+  };
+
+  for (let p = 0; p <= 100; p += stepPct) {
+    const digital = (totalBudget * p) / 100;
+    const tv = totalBudget - digital;
+    const f = buildForecast({ days, tvBudget: tv, digitalBudget: digital, snsPosts });
+    if (f.sum.profit > best.sum.profit) {
+      best = { tv, digital, sum: f.sum, pctDigital: p };
+    }
+  }
+  return best;
+}
+
+/* =====================
   メイン
 ===================== */
 export default function Home() {
-  /* A：固定の現状（比較基準） */
+  /* 固定の現状（比較基準） */
   const baseline = {
     tv: 18_000_000,
     digital: 8_000_000,
-    sns: 120, // 月間投稿数（現状）
+    sns: 120,
     days: 30,
   };
 
   /* 将来（可変） */
-  const [tv, setTv] = useState(13_500_000);
+  const [tv, setTv] = useState(18_000_000);
   const [digital, setDigital] = useState(9_000_000);
   const [sns, setSns] = useState(180);
   const [days, setDays] = useState(30);
 
   const base = useMemo(
-    () =>
-      buildForecast({
-        days: baseline.days,
-        tvBudget: baseline.tv,
-        digitalBudget: baseline.digital,
-        snsPosts: baseline.sns,
-      }),
+    () => buildForecast({ days: baseline.days, tvBudget: baseline.tv, digitalBudget: baseline.digital, snsPosts: baseline.sns }),
     []
   );
 
   const future = useMemo(
-    () =>
-      buildForecast({
-        days,
-        tvBudget: tv,
-        digitalBudget: digital,
-        snsPosts: sns,
-      }),
+    () => buildForecast({ days, tvBudget: tv, digitalBudget: digital, snsPosts: sns }),
     [tv, digital, sns, days]
+  );
+
+  // ★推奨（総予算固定で最適配分）
+  const totalBudget = tv + digital;
+  const best = useMemo(
+    () => findBestMix({ totalBudget, days, snsPosts: sns, stepPct: 5 }),
+    [totalBudget, days, sns]
   );
 
   return (
     <main style={{ padding: 24, background: COLORS.bg, minHeight: "100vh", fontFamily: "sans-serif" }}>
       <h1 style={{ fontSize: 22, fontWeight: 900, marginBottom: 6 }}>投資配分シミュレーター（未来予測）</h1>
       <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 16 }}>
-        TV/デジタル投資とSNS投稿数（企業施策）を入力すると、検索・UGC（ツイート）・売上・粗利がどう変わるかを予測します（ダミーモデル）。
+        TV/デジ/SNS投稿を入力すると、検索・UGC・売上・粗利がどう変わるかを予測します。さらに★総予算固定で粗利最大の配分を提案します。
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "360px 1fr", gap: 16 }}>
-        {/* 左：入力 */}
-        <Card title="入力：将来の投資・施策" accent={COLORS.future}>
-          <Slider label="テレビ投資" value={tv} min={0} max={30_000_000} step={500_000} onChange={setTv} color={COLORS.tv} formatter={yen} />
-          <Slider label="デジタル投資" value={digital} min={0} max={30_000_000} step={500_000} onChange={setDigital} color={COLORS.digital} formatter={yen} />
-          <Slider label="SNS投稿数（月）" value={sns} min={0} max={300} step={10} onChange={setSns} color={COLORS.sns} formatter={(v) => `${v}本`} />
-          <Slider label="予測期間（日）" value={days} min={7} max={60} step={1} onChange={setDays} color="#111827" formatter={(v) => `${v}日`} />
+        {/* 左：入力＋推奨 */}
+        <div style={{ display: "grid", gap: 16 }}>
+          <Card title="入力：将来の投資・施策" accent={COLORS.future}>
+            <Slider label="テレビ投資" value={tv} min={0} max={30_000_000} step={500_000} onChange={setTv} color={COLORS.tv} formatter={yen} />
+            <Slider label="デジタル投資" value={digital} min={0} max={30_000_000} step={500_000} onChange={setDigital} color={COLORS.digital} formatter={yen} />
+            <Slider label="SNS投稿数（月）" value={sns} min={0} max={300} step={10} onChange={setSns} color={COLORS.sns} formatter={(v) => `${v}本`} />
+            <Slider label="予測期間（日）" value={days} min={7} max={60} step={1} onChange={setDays} color="#111827" formatter={(v) => `${v}日`} />
 
-          <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75, lineHeight: 1.5 }}>
-            <strong>現状（固定・比較基準）</strong><br />
-            TV {yen(baseline.tv)} / デジタル {yen(baseline.digital)} / SNS投稿 {baseline.sns}本（{baseline.days}日）
-          </div>
+            <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75, lineHeight: 1.5 }}>
+              <strong>現状（固定・比較基準）</strong><br />
+              TV {yen(baseline.tv)} / デジ {yen(baseline.digital)} / SNS {baseline.sns}本（{baseline.days}日）
+            </div>
+          </Card>
 
-          <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75, lineHeight: 1.5 }}>
-            <strong>モデル（ダミー）意図</strong><br />
-            ・TV：話題/検索の「土台」を作るが、増やすほど逓減<br />
-            ・デジタル：検索へ効率良く効く（粗利率も押し上げる想定）<br />
-            ・SNS投稿：検索とUGC（ツイート）を押し上げる
-          </div>
-        </Card>
+          {/* ★推奨カード */}
+          <Card title="★ 推奨：粗利最大の配分（総予算固定）" accent={COLORS.profit}>
+            <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 10 }}>
+              総予算（TV+デジ）：<strong>{yen(totalBudget)}</strong>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <KpiBox
+                label="TV投資（推奨）"
+                value={yen(best.tv)}
+                delta={`${best.tv - tv >= 0 ? "+" : "-"}${yen(Math.abs(best.tv - tv))}`}
+                color={COLORS.tv}
+              />
+              <KpiBox
+                label="デジ投資（推奨）"
+                value={yen(best.digital)}
+                delta={`${best.digital - digital >= 0 ? "+" : "-"}${yen(Math.abs(best.digital - digital))}`}
+                color={COLORS.digital}
+              />
+            </div>
+
+            <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75 }}>
+              推奨デジ比率：<strong>{best.pctDigital}%</strong>
+            </div>
+
+            <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <KpiBox label="粗利（推奨）" value={yen(best.sum.profit)} delta={diff(future.sum.profit, best.sum.profit, yen)} color={COLORS.profit} />
+              <KpiBox label="売上（推奨）" value={yen(best.sum.sales)} delta={diff(future.sum.sales, best.sum.sales, yen)} color={COLORS.sales} />
+            </div>
+
+            <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75 }}>
+              検索 {num(best.sum.search)}（差分 {diff(future.sum.search, best.sum.search, num)}） / UGC {num(best.sum.tweets)}（差分 {diff(future.sum.tweets, best.sum.tweets, num)}）
+            </div>
+
+            {/* ← あなたが探していたボタンはここです */}
+            <div style={{ marginTop: 12 }}>
+              <Button onClick={() => { setTv(best.tv); setDigital(best.digital); }}>
+                推奨配分を入力に適用
+              </Button>
+            </div>
+
+            <div style={{ marginTop: 8, fontSize: 12, opacity: 0.65 }}>
+              ※ 5%刻みで探索。次に「TV最低額」など制約も入れられます。
+            </div>
+          </Card>
+        </div>
 
         {/* 右：差分KPI＋グラフ */}
         <div style={{ display: "grid", gridTemplateRows: "auto auto", gap: 16 }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12 }}>
-            <KpiBox
-              label={`検索数（合計/${days}日）`}
-              value={num(future.sum.search)}
-              delta={diff(base.sum.search, future.sum.search, num)}
-              color={COLORS.search}
-            />
-            <KpiBox
-              label={`ツイート数（UGC/合計${days}日）`}
-              value={num(future.sum.tweets)}
-              delta={diff(base.sum.tweets, future.sum.tweets, num)}
-              color={COLORS.tweets}
-            />
-            <KpiBox
-              label={`売上（合計/${days}日）`}
-              value={yen(future.sum.sales)}
-              delta={diff(base.sum.sales, future.sum.sales, yen)}
-              color={COLORS.sales}
-            />
-            <KpiBox
-              label={`粗利（合計/${days}日）`}
-              value={yen(future.sum.profit)}
-              delta={diff(base.sum.profit, future.sum.profit, yen)}
-              color={COLORS.profit}
-            />
+            <KpiBox label={`検索数（合計/${days}日）`} value={num(future.sum.search)} delta={diff(base.sum.search, future.sum.search, num)} color={COLORS.search} />
+            <KpiBox label={`ツイート数（UGC/合計${days}日）`} value={num(future.sum.tweets)} delta={diff(base.sum.tweets, future.sum.tweets, num)} color={COLORS.tweets} />
+            <KpiBox label={`売上（合計/${days}日）`} value={yen(future.sum.sales)} delta={diff(base.sum.sales, future.sum.sales, yen)} color={COLORS.sales} />
+            <KpiBox label={`粗利（合計/${days}日）`} value={yen(future.sum.profit)} delta={diff(base.sum.profit, future.sum.profit, yen)} color={COLORS.profit} />
           </div>
 
           <Card title={`未来推移（${days}日）`} accent={COLORS.future}>
@@ -333,14 +401,10 @@ export default function Home() {
                 </LineChart>
               </ResponsiveContainer>
             </div>
-            <div style={{ marginTop: 10, fontSize: 12, opacity: 0.7 }}>
-              次：B（最適配分★）を追加して「TVをいくら減らすと粗利が最大か」を自動提案します。
-            </div>
           </Card>
         </div>
       </div>
     </main>
   );
 }
-
 
