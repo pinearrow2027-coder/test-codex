@@ -10,401 +10,478 @@ import {
   Legend,
 } from "recharts";
 
-/* =====================
-  色（意味づけ）
-===================== */
-const COLORS = {
-  tv: "#f97316",
-  digital: "#2563eb",
-  sns: "#ec4899",       // SNS投稿（企業）
-  search: "#7c3aed",
-  tweets: "#22c55e",    // UGC
-  sales: "#111827",
-  profit: "#16a34a",
-  base: "#94a3b8",
-  future: "#60a5fa",
-  bg: "#f4f6fb",
+/* ===== Theme ===== */
+const THEME = {
+  skincare: { main: "#2563eb", soft: "#eff6ff", border: "#bfdbfe" }, // blue
+  makeup: { main: "#f59e0b", soft: "#fffbeb", border: "#fde68a" }, // yellow
+  ink: { main: "#111827" },
 };
 
-const yen = (n: number) => "¥" + Math.round(n).toLocaleString();
-const num = (n: number) => Math.round(n).toLocaleString();
-
-/* =====================
-  UI部品
-===================== */
-function Card({
-  title,
-  children,
-  accent,
-}: {
-  title: string;
-  children: React.ReactNode;
-  accent?: string;
-}) {
-  return (
-    <div
-      style={{
-        background: "#fff",
-        borderRadius: 16,
-        padding: 16,
-        boxShadow: "0 8px 20px rgba(0,0,0,.06)",
-        borderTop: accent ? `4px solid ${accent}` : undefined,
-      }}
-    >
-      <div style={{ fontWeight: 900, marginBottom: 12 }}>{title}</div>
-      {children}
-    </div>
-  );
-}
-
-function KpiBox({
-  label,
-  value,
-  delta,
-  color,
-}: {
-  label: string;
-  value: string;
-  delta?: string;
-  color: string;
-}) {
-  const isNeg = delta?.startsWith("-");
-  return (
-    <div
-      style={{
-        background: "#fff",
-        borderRadius: 14,
-        padding: 16,
-        borderTop: `4px solid ${color}`,
-      }}
-    >
-      <div style={{ fontSize: 12, opacity: 0.7 }}>{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 900 }}>{value}</div>
-      {delta && (
-        <div
-          style={{
-            marginTop: 6,
-            fontSize: 13,
-            fontWeight: 900,
-            color: isNeg ? "#b00020" : "#0a7a3d",
-          }}
-        >
-          {delta} <span style={{ opacity: 0.6 }}>（差分）</span>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Slider({
-  label,
-  value,
-  min,
-  max,
-  step,
-  onChange,
-  color,
-  formatter,
-}: {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  step: number;
-  onChange: (v: number) => void;
-  color: string;
-  formatter?: (v: number) => string;
-}) {
-  return (
-    <div style={{ marginBottom: 14 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-        <strong>{label}</strong>
-        <span>{formatter ? formatter(value) : value}</span>
-      </div>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        style={{ width: "100%", accentColor: color }}
-      />
-    </div>
-  );
-}
-
-function Button({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        width: "100%",
-        padding: "10px 12px",
-        borderRadius: 12,
-        border: "1px solid #e5e5e5",
-        background: "#111827",
-        color: "#fff",
-        fontWeight: 900,
-        cursor: "pointer",
-      }}
-    >
-      {children}
-    </button>
-  );
-}
-
-/* =====================
-  ダミー係数（説明用）
-===================== */
-const COEF = {
-  tv_to_search: 0.02,
-  digital_to_search: 0.06,
-  sns_to_search: 25,        // 投稿1本→検索増
-  tv_to_tweets: 0.000001,
-  digital_to_tweets: 0.000002,
-  sns_to_tweets: 18,        // 投稿1本→UGC増
-  search_to_sales: 180,
-  tweets_to_sales: 900,
-  base_margin: 0.28,
-  max_margin_bonus: 0.1,
+/* ===== Styles (no Tailwind) ===== */
+const S: Record<string, React.CSSProperties> = {
+  page: {
+    padding: 20,
+    background: "#f6f7fb",
+    minHeight: "100vh",
+    fontFamily:
+      'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial',
+    color: THEME.ink.main,
+  },
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+    flexWrap: "wrap",
+    marginBottom: 12,
+  },
+  h1: { fontSize: 24, fontWeight: 900, margin: 0 },
+  badge: {
+    padding: "8px 12px",
+    borderRadius: 999,
+    background: "#111827",
+    color: "#fff",
+    fontWeight: 900,
+    fontSize: 12,
+  },
+  card: {
+    background: "#fff",
+    border: "1px solid #eef2f7",
+    borderRadius: 14,
+    padding: 14,
+    boxShadow: "0 1px 10px rgba(0,0,0,0.06)",
+  },
+  columns: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0,1fr))",
+    gap: 14,
+    marginTop: 12,
+  },
+  row: { display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" },
+  label: { fontSize: 12, color: "#6b7280", marginBottom: 6 },
+  input: {
+    width: 120,
+    padding: "8px 10px",
+    borderRadius: 10,
+    border: "1px solid #e5e7eb",
+    outline: "none",
+    fontSize: 14,
+    background: "#fff",
+  },
+  slider: { width: 260 },
+  button: {
+    padding: "10px 14px",
+    borderRadius: 10,
+    border: "1px solid #111827",
+    background: "#111827",
+    color: "#fff",
+    fontWeight: 900,
+    cursor: "pointer",
+  },
+  buttonGhost: {
+    padding: "10px 14px",
+    borderRadius: 10,
+    border: "1px solid #e5e7eb",
+    background: "#fff",
+    color: "#111827",
+    fontWeight: 900,
+    cursor: "pointer",
+  },
+  hr: { height: 1, background: "#eef2f7", border: "none", margin: "12px 0" },
+  grid4: {
+    display: "grid",
+    gridTemplateColumns: "repeat(4, minmax(0,1fr))",
+    gap: 10,
+  },
+  grid2: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0,1fr))",
+    gap: 12,
+  },
+  tabRow: { display: "flex", gap: 8, flexWrap: "wrap" },
+  tab: {
+    padding: "7px 10px",
+    borderRadius: 999,
+    border: "1px solid #e5e7eb",
+    background: "#fff",
+    cursor: "pointer",
+    fontWeight: 900,
+    fontSize: 12,
+  },
+  tabActive: {
+    padding: "7px 10px",
+    borderRadius: 999,
+    border: "1px solid #111827",
+    background: "#111827",
+    color: "#fff",
+    cursor: "pointer",
+    fontWeight: 900,
+    fontSize: 12,
+  },
+  small: { fontSize: 12, color: "#6b7280" },
 };
 
-function diminishing(x: number, scale: number) {
-  return 1 - Math.exp(-x / scale);
+const fmt = {
+  yenM: (n: number) => `¥${n.toFixed(1)}M`,
+  int: (n: number) => `${Math.round(n).toLocaleString()}`,
+  pct1: (n: number) => `${(n * 100).toFixed(1)}%`,
+};
+
+/* ===== demo model ===== */
+function sat(x: number, k: number) {
+  return 1 - Math.exp(-x / Math.max(1e-6, k));
+}
+type Inputs = { tv: number; digital: number; sns: number };
+
+function calcSkincare({ tv, digital, sns }: Inputs) {
+  const grp = 200 * sat(tv, 6) + 20 * tv;
+  const reach = 180000 * sat(digital, 4) + 8000 * digital;
+  const vcr = 0.18 + 0.10 * sat(sns, 8) + 0.05 * sat(digital, 10);
+
+  const brandSearch = 12000 * sat(grp, 220) + 9000 * sat(reach / 10000, 8) + 2500 * sat(sns, 10);
+  const ec = 0.55 * brandSearch + 900 * sat(digital, 3) + 600 * sat(sns, 8);
+  const store = 0.25 * brandSearch + 700 * sat(tv, 4);
+  const pdp = 0.75 * ec + 0.2 * store;
+
+  const sales = (pdp * (0.02 + 0.01 * sat(vcr * 100, 22))) * 0.055 * (1.45 + 0.35 * sat(brandSearch / 10000, 2.5));
+  const gm = 0.62;
+  const profit = sales * gm;
+
+  return { grp, reach, vcr, brandSearch, ec, store, pdp, sales, profit, gm };
 }
 
-/* =====================
-  未来予測生成
-===================== */
-function buildForecast({
-  days,
-  tvBudget,
-  digitalBudget,
-  snsPosts,
-}: {
-  days: number;
-  tvBudget: number;
-  digitalBudget: number;
-  snsPosts: number;
-}) {
-  const tvPerDay = tvBudget / days;
-  const digitalPerDay = digitalBudget / days;
-  const snsPerDay = snsPosts / days;
+function calcMakeup({ tv, digital, sns }: Inputs) {
+  const grp = 170 * sat(tv, 5) + 18 * tv;
+  const productSearch = 15000 * sat(digital, 3.8) + 5500 * sat(sns, 9) + 60 * grp;
 
-  const tvEff = diminishing(tvBudget, 20_000_000);
-  const digitalEff = diminishing(digitalBudget, 10_000_000);
+  const ugc = 120 * sat(sns, 10) + 40 * sat(digital, 8);
+  const searchVolume = 0.85 * productSearch + 35 * ugc;
+  const creativeScore = 0.52 + 0.20 * sat(sns, 10) + 0.10 * sat(digital, 8);
 
-  const baseSearch = 6000;
-  const baseTweets = 300;
+  const sales = (searchVolume * 0.08) * (0.014 + 0.01 * sat(creativeScore * 100, 65)) * 0.022 * (1.10 + 0.55 * sat(ugc, 160));
+  const gm = 0.58;
+  const profit = sales * gm;
 
-  const rows = Array.from({ length: days }, (_, i) => {
-    const day = `D${String(i + 1).padStart(2, "0")}`;
-    const wobble = 0.95 + (i % 7) * 0.01;
+  return { grp, productSearch, ugc, searchVolume, creativeScore, sales, profit, gm };
+}
 
-    const search =
-      baseSearch +
-      tvPerDay * COEF.tv_to_search * tvEff +
-      digitalPerDay * COEF.digital_to_search * digitalEff +
-      snsPerDay * COEF.sns_to_search;
+function makeSeries(domain: "skincare" | "makeup", inputs: Inputs, mode: "asis" | "tobe") {
+  return Array.from({ length: 30 }, (_, i) => {
+    const t = i / 29;
+    const wobble = 1 + 0.02 * Math.sin(i * 0.6) + 0.015 * Math.cos(i * 0.21);
+    const drift = mode === "asis" ? 0.98 + 0.04 * t : 0.92 + 0.12 * t;
 
-    const tweets =
-      baseTweets +
-      tvPerDay * COEF.tv_to_tweets * tvEff +
-      digitalPerDay * COEF.digital_to_tweets * digitalEff +
-      snsPerDay * COEF.sns_to_tweets;
+    const adj: Inputs = {
+      tv: inputs.tv * drift * wobble,
+      digital: inputs.digital * drift * wobble,
+      sns: Math.max(0, inputs.sns * (0.95 + 0.10 * t)),
+    };
 
-    const sales = (search * COEF.search_to_sales + tweets * COEF.tweets_to_sales) * wobble;
-
-    const share = digitalBudget / (tvBudget + digitalBudget);
-    const margin = COEF.base_margin + COEF.max_margin_bonus * share;
-    const profit = sales * margin;
-
-    return { day, search, tweets, sales, profit };
+    const out = domain === "skincare" ? calcSkincare(adj) : calcMakeup(adj);
+    return { day: `D${String(i + 1).padStart(2, "0")}`, ...out };
   });
-
-  const sum = rows.reduce(
-    (a, r) => {
-      a.search += r.search;
-      a.tweets += r.tweets;
-      a.sales += r.sales;
-      a.profit += r.profit;
-      return a;
-    },
-    { search: 0, tweets: 0, sales: 0, profit: 0 }
-  );
-
-  return { rows, sum };
 }
 
-const diff = (a: number, b: number, f: (n: number) => string) =>
-  `${b - a >= 0 ? "+" : "-"}${f(Math.abs(b - a))}`;
-
-/* =====================
-  最適配分探索（総予算固定で粗利最大）
-===================== */
-function findBestMix({
-  totalBudget,
-  days,
-  snsPosts,
-  stepPct = 5,
-}: {
-  totalBudget: number;
-  days: number;
-  snsPosts: number;
-  stepPct?: number;
-}) {
-  let best = {
-    tv: totalBudget * 0.5,
-    digital: totalBudget * 0.5,
-    sum: { search: 0, tweets: 0, sales: 0, profit: -Infinity },
-    pctDigital: 50,
-  };
-
-  for (let p = 0; p <= 100; p += stepPct) {
-    const digital = (totalBudget * p) / 100;
-    const tv = totalBudget - digital;
-    const f = buildForecast({ days, tvBudget: tv, digitalBudget: digital, snsPosts });
-    if (f.sum.profit > best.sum.profit) {
-      best = { tv, digital, sum: f.sum, pctDigital: p };
+function recommend(domain: "skincare" | "makeup", budget: number) {
+  let best = { tv: budget * 0.5, digital: budget * 0.5, sns: 8, profit: -Infinity };
+  for (let r = 0; r <= 100; r += 2) {
+    const tv = budget * (r / 100);
+    const digital = budget - tv;
+    for (let sns = 0; sns <= 30; sns += 1) {
+      const out = domain === "skincare" ? calcSkincare({ tv, digital, sns }) : calcMakeup({ tv, digital, sns });
+      if (out.profit > best.profit) best = { tv, digital, sns, profit: out.profit };
     }
   }
   return best;
 }
 
-/* =====================
-  メイン
-===================== */
-export default function Home() {
-  /* 固定の現状（比較基準） */
-  const baseline = {
-    tv: 18_000_000,
-    digital: 8_000_000,
-    sns: 120,
-    days: 30,
-  };
-
-  /* 将来（可変） */
-  const [tv, setTv] = useState(18_000_000);
-  const [digital, setDigital] = useState(9_000_000);
-  const [sns, setSns] = useState(180);
-  const [days, setDays] = useState(30);
-
-  const base = useMemo(
-    () => buildForecast({ days: baseline.days, tvBudget: baseline.tv, digitalBudget: baseline.digital, snsPosts: baseline.sns }),
-    []
-  );
-
-  const future = useMemo(
-    () => buildForecast({ days, tvBudget: tv, digitalBudget: digital, snsPosts: sns }),
-    [tv, digital, sns, days]
-  );
-
-  // ★推奨（総予算固定で最適配分）
-  const totalBudget = tv + digital;
-  const best = useMemo(
-    () => findBestMix({ totalBudget, days, snsPosts: sns, stepPct: 5 }),
-    [totalBudget, days, sns]
-  );
-
+/* ===== UI parts ===== */
+function KPI({
+  theme,
+  title,
+  value,
+  hint,
+}: {
+  theme: { main: string; soft: string; border: string };
+  title: string;
+  value: string;
+  hint?: string;
+}) {
   return (
-    <main style={{ padding: 24, background: COLORS.bg, minHeight: "100vh", fontFamily: "sans-serif" }}>
-      <h1 style={{ fontSize: 22, fontWeight: 900, marginBottom: 6 }}>投資配分シミュレーター（未来予測）</h1>
-      <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 16 }}>
-        TV/デジ/SNS投稿を入力すると、検索・UGC・売上・粗利がどう変わるかを予測します。さらに★総予算固定で粗利最大の配分を提案します。
+    <div style={{ borderRadius: 14, padding: 12, background: theme.soft, border: `1px solid ${theme.border}` }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ width: 10, height: 10, borderRadius: 999, background: theme.main }} />
+        <div style={{ fontSize: 12, color: "#6b7280", fontWeight: 900 }}>{title}</div>
       </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "360px 1fr", gap: 16 }}>
-        {/* 左：入力＋推奨 */}
-        <div style={{ display: "grid", gap: 16 }}>
-          <Card title="入力：将来の投資・施策" accent={COLORS.future}>
-            <Slider label="テレビ投資" value={tv} min={0} max={30_000_000} step={500_000} onChange={setTv} color={COLORS.tv} formatter={yen} />
-            <Slider label="デジタル投資" value={digital} min={0} max={30_000_000} step={500_000} onChange={setDigital} color={COLORS.digital} formatter={yen} />
-            <Slider label="SNS投稿数（月）" value={sns} min={0} max={300} step={10} onChange={setSns} color={COLORS.sns} formatter={(v) => `${v}本`} />
-            <Slider label="予測期間（日）" value={days} min={7} max={60} step={1} onChange={setDays} color="#111827" formatter={(v) => `${v}日`} />
-
-            <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75, lineHeight: 1.5 }}>
-              <strong>現状（固定・比較基準）</strong><br />
-              TV {yen(baseline.tv)} / デジ {yen(baseline.digital)} / SNS {baseline.sns}本（{baseline.days}日）
-            </div>
-          </Card>
-
-          {/* ★推奨カード */}
-          <Card title="★ 推奨：粗利最大の配分（総予算固定）" accent={COLORS.profit}>
-            <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 10 }}>
-              総予算（TV+デジ）：<strong>{yen(totalBudget)}</strong>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <KpiBox
-                label="TV投資（推奨）"
-                value={yen(best.tv)}
-                delta={`${best.tv - tv >= 0 ? "+" : "-"}${yen(Math.abs(best.tv - tv))}`}
-                color={COLORS.tv}
-              />
-              <KpiBox
-                label="デジ投資（推奨）"
-                value={yen(best.digital)}
-                delta={`${best.digital - digital >= 0 ? "+" : "-"}${yen(Math.abs(best.digital - digital))}`}
-                color={COLORS.digital}
-              />
-            </div>
-
-            <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75 }}>
-              推奨デジ比率：<strong>{best.pctDigital}%</strong>
-            </div>
-
-            <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <KpiBox label="粗利（推奨）" value={yen(best.sum.profit)} delta={diff(future.sum.profit, best.sum.profit, yen)} color={COLORS.profit} />
-              <KpiBox label="売上（推奨）" value={yen(best.sum.sales)} delta={diff(future.sum.sales, best.sum.sales, yen)} color={COLORS.sales} />
-            </div>
-
-            <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75 }}>
-              検索 {num(best.sum.search)}（差分 {diff(future.sum.search, best.sum.search, num)}） / UGC {num(best.sum.tweets)}（差分 {diff(future.sum.tweets, best.sum.tweets, num)}）
-            </div>
-
-            {/* ← あなたが探していたボタンはここです */}
-            <div style={{ marginTop: 12 }}>
-              <Button onClick={() => { setTv(best.tv); setDigital(best.digital); }}>
-                推奨配分を入力に適用
-              </Button>
-            </div>
-
-            <div style={{ marginTop: 8, fontSize: 12, opacity: 0.65 }}>
-              ※ 5%刻みで探索。次に「TV最低額」など制約も入れられます。
-            </div>
-          </Card>
-        </div>
-
-        {/* 右：差分KPI＋グラフ */}
-        <div style={{ display: "grid", gridTemplateRows: "auto auto", gap: 16 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12 }}>
-            <KpiBox label={`検索数（合計/${days}日）`} value={num(future.sum.search)} delta={diff(base.sum.search, future.sum.search, num)} color={COLORS.search} />
-            <KpiBox label={`ツイート数（UGC/合計${days}日）`} value={num(future.sum.tweets)} delta={diff(base.sum.tweets, future.sum.tweets, num)} color={COLORS.tweets} />
-            <KpiBox label={`売上（合計/${days}日）`} value={yen(future.sum.sales)} delta={diff(base.sum.sales, future.sum.sales, yen)} color={COLORS.sales} />
-            <KpiBox label={`粗利（合計/${days}日）`} value={yen(future.sum.profit)} delta={diff(base.sum.profit, future.sum.profit, yen)} color={COLORS.profit} />
-          </div>
-
-          <Card title={`未来推移（${days}日）`} accent={COLORS.future}>
-            <div style={{ height: 420 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={future.rows}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="day" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line dataKey="search" name="検索数" stroke={COLORS.search} dot={false} />
-                  <Line dataKey="tweets" name="ツイート数（UGC）" stroke={COLORS.tweets} dot={false} />
-                  <Line dataKey="sales" name="売上" stroke={COLORS.sales} dot={false} />
-                  <Line dataKey="profit" name="粗利" stroke={COLORS.profit} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
-        </div>
-      </div>
-    </main>
+      <div style={{ fontSize: 18, fontWeight: 900, marginTop: 6 }}>{value}</div>
+      {hint ? <div style={{ marginTop: 6, fontSize: 12, color: "#6b7280" }}>{hint}</div> : null}
+    </div>
   );
 }
 
+function clamp(n: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, n));
+}
+
+export default function Home() {
+  const [totalBudget, setTotalBudget] = useState(12);
+  const [splitSkincare, setSplitSkincare] = useState(50);
+
+  const skincareBudget = totalBudget * (splitSkincare / 100);
+  const makeupBudget = totalBudget - skincareBudget;
+
+  const [modeSkincare, setModeSkincare] = useState<"asis" | "tobe">("asis");
+  const [modeMakeup, setModeMakeup] = useState<"asis" | "tobe">("asis");
+
+  const [skinTvRatio, setSkinTvRatio] = useState(45);
+  const [skinSns, setSkinSns] = useState(8);
+
+  const [makeTvRatio, setMakeTvRatio] = useState(35);
+  const [makeSns, setMakeSns] = useState(10);
+
+  const skincareInputs = useMemo<Inputs>(() => {
+    const tv = skincareBudget * (skinTvRatio / 100);
+    return { tv, digital: skincareBudget - tv, sns: skinSns };
+  }, [skincareBudget, skinTvRatio, skinSns]);
+
+  const makeupInputs = useMemo<Inputs>(() => {
+    const tv = makeupBudget * (makeTvRatio / 100);
+    return { tv, digital: makeupBudget - tv, sns: makeSns };
+  }, [makeupBudget, makeTvRatio, makeSns]);
+
+  const sk = useMemo(() => calcSkincare(skincareInputs), [skincareInputs]);
+  const mk = useMemo(() => calcMakeup(makeupInputs), [makeupInputs]);
+
+  const recSk = useMemo(() => recommend("skincare", skincareBudget), [skincareBudget]);
+  const recMk = useMemo(() => recommend("makeup", makeupBudget), [makeupBudget]);
+
+  const skSeries = useMemo(() => makeSeries("skincare", skincareInputs, modeSkincare), [skincareInputs, modeSkincare]);
+  const mkSeries = useMemo(() => makeSeries("makeup", makeupInputs, modeMakeup), [makeupInputs, modeMakeup]);
+
+  const [skMetric, setSkMetric] = useState<"profit" | "sales" | "brandSearch" | "ec" | "pdp" | "grp" | "reach" | "vcr">("profit");
+  const [mkMetric, setMkMetric] = useState<"profit" | "sales" | "ugc" | "searchVolume" | "creativeScore" | "grp" | "productSearch">("profit");
+
+  const applySk = () => {
+    setSkinTvRatio(clamp((recSk.tv / Math.max(1e-6, skincareBudget)) * 100, 0, 100));
+    setSkinSns(recSk.sns);
+    setModeSkincare("tobe");
+  };
+
+  const applyMk = () => {
+    setMakeTvRatio(clamp((recMk.tv / Math.max(1e-6, makeupBudget)) * 100, 0, 100));
+    setMakeSns(recMk.sns);
+    setModeMakeup("tobe");
+  };
+
+  return (
+    <div style={S.page}>
+      <div style={S.header}>
+        <h1 style={S.h1}>投資配分ダッシュボード</h1>
+        <div style={S.badge}>最適化 → 適用</div>
+      </div>
+
+      {/* 全体設定 */}
+      <div style={S.card}>
+        <div style={{ fontWeight: 900, marginBottom: 10 }}>全体設定</div>
+        <div style={S.row}>
+          <div>
+            <div style={S.label}>総予算（M円）</div>
+            <input style={S.input} type="number" min={0} step={0.1} value={totalBudget}
+              onChange={(e) => setTotalBudget(Number(e.target.value || 0))} />
+          </div>
+
+          <div style={{ minWidth: 360 }}>
+            <div style={S.label}>
+              領域配分：スキンケア <b>{splitSkincare}%</b> / メイク <b>{100 - splitSkincare}%</b>
+            </div>
+            <input style={S.slider} type="range" min={0} max={100} step={1} value={splitSkincare}
+              onChange={(e) => setSplitSkincare(Number(e.target.value))} />
+            <div style={S.small}>スキンケア {fmt.yenM(skincareBudget)} ／ メイク {fmt.yenM(makeupBudget)}</div>
+          </div>
+        </div>
+      </div>
+
+      <div style={S.columns}>
+        {/* スキンケア */}
+        <div style={S.card}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <div style={{ fontWeight: 900, color: THEME.skincare.main }}>● スキンケア（LTV重視）</div>
+            <div style={S.tabRow}>
+              <button style={modeSkincare === "asis" ? S.tabActive : S.tab} onClick={() => setModeSkincare("asis")}>AS-IS</button>
+              <button style={modeSkincare === "tobe" ? S.tabActive : S.tab} onClick={() => setModeSkincare("tobe")}>TO-BE</button>
+            </div>
+          </div>
+
+          <hr style={S.hr} />
+
+          <div style={S.row}>
+            <div>
+              <div style={S.label}>予算（固定）</div>
+              <div style={{ fontWeight: 900 }}>{fmt.yenM(skincareBudget)}</div>
+            </div>
+
+            <div style={{ minWidth: 320 }}>
+              <div style={S.label}>TV比率（残りがデジ）: <b>{skinTvRatio}%</b></div>
+              <input style={S.slider} type="range" min={0} max={100} step={1} value={skinTvRatio}
+                onChange={(e) => { setSkinTvRatio(Number(e.target.value)); setModeSkincare("tobe"); }} />
+              <div style={S.small}>TV {fmt.yenM(skincareInputs.tv)} ／ デジ {fmt.yenM(skincareInputs.digital)}</div>
+            </div>
+
+            <div>
+              <div style={S.label}>SNS投稿（本/週）</div>
+              <input style={S.input} type="number" min={0} max={30} step={1} value={skinSns}
+                onChange={(e) => { setSkinSns(Number(e.target.value || 0)); setModeSkincare("tobe"); }} />
+            </div>
+
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button style={S.button} onClick={applySk}>推奨配分を入力に適用</button>
+              <button style={S.buttonGhost} onClick={() => { setSkinTvRatio(45); setSkinSns(8); setModeSkincare("tobe"); }}>リセット</button>
+            </div>
+          </div>
+
+          <hr style={S.hr} />
+
+          <div style={{ fontWeight: 900, marginBottom: 8 }}>KPI</div>
+          <div style={S.grid4}>
+            <KPI theme={THEME.skincare} title="TV：GRP（上流）" value={fmt.int(sk.grp)} />
+            <KPI theme={THEME.skincare} title="デジ：ビューアブルリーチ（上流）" value={fmt.int(sk.reach)} />
+            <KPI theme={THEME.skincare} title="デジ：完全視聴率（上流）" value={fmt.pct1(sk.vcr)} />
+            <KPI theme={THEME.skincare} title="ブランド検索数（中流）" value={fmt.int(sk.brandSearch)} />
+          </div>
+          <div style={{ ...S.grid4, marginTop: 10 }}>
+            <KPI theme={THEME.skincare} title="EC送客数（中流）" value={fmt.int(sk.ec)} />
+            <KPI theme={THEME.skincare} title="店頭送客数（中流）" value={fmt.int(sk.store)} />
+            <KPI theme={THEME.skincare} title="商品詳細ページ流入（中流）" value={fmt.int(sk.pdp)} />
+            <KPI theme={THEME.skincare} title="粗利（proxy）" value={fmt.yenM(sk.profit)} hint={`売上 ${fmt.yenM(sk.sales)} / 粗利率 ${(sk.gm * 100).toFixed(0)}%`} />
+          </div>
+
+          <hr style={S.hr} />
+
+          <div style={S.grid2}>
+            {/* 推奨（白地） */}
+            <div style={{ borderRadius: 14, padding: 12, background: "#fff", border: `1px solid ${THEME.skincare.border}`, borderLeft: `6px solid ${THEME.skincare.main}` }}>
+              <div style={{ fontSize: 12, color: "#6b7280", fontWeight: 900 }}>推奨（粗利最大）</div>
+              <div style={{ marginTop: 6, fontWeight: 900 }}>
+                TV {fmt.yenM(recSk.tv)} / デジ {fmt.yenM(recSk.digital)} / SNS {recSk.sns}本/週
+              </div>
+              <div style={{ marginTop: 8, ...S.small }}>推奨粗利 {fmt.yenM(recSk.profit)}</div>
+            </div>
+
+            <div style={{ background: "#fff", borderRadius: 14, padding: 12, border: "1px solid #eef2f7" }}>
+              <div style={{ fontSize: 12, color: "#6b7280", fontWeight: 900 }}>チャート表示項目</div>
+              <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {(["profit","sales","brandSearch","ec","pdp","grp","reach","vcr"] as const).map((k) => (
+                  <button key={k} style={skMetric === k ? S.tabActive : S.tab} onClick={() => setSkMetric(k)}>{k}</button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* グラフ（白地） */}
+          <div style={{ marginTop: 12, background: "#fff", borderRadius: 14, padding: 12, border: `1px solid ${THEME.skincare.border}`, borderLeft: `6px solid ${THEME.skincare.main}` }}>
+            <ResponsiveContainer width="100%" height={260}>
+              <LineChart data={skSeries}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="day" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Line type="monotone" dataKey={skMetric} name={skMetric} stroke={THEME.skincare.main} strokeWidth={3} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+            <div style={S.small}>※ {modeSkincare.toUpperCase()} の30日傾向（デモ）</div>
+          </div>
+        </div>
+
+        {/* メイク */}
+        <div style={S.card}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <div style={{ fontWeight: 900, color: THEME.makeup.main }}>● メイク（商品ヒット重視）</div>
+            <div style={S.tabRow}>
+              <button style={modeMakeup === "asis" ? S.tabActive : S.tab} onClick={() => setModeMakeup("asis")}>AS-IS</button>
+              <button style={modeMakeup === "tobe" ? S.tabActive : S.tab} onClick={() => setModeMakeup("tobe")}>TO-BE</button>
+            </div>
+          </div>
+
+          <hr style={S.hr} />
+
+          <div style={S.row}>
+            <div>
+              <div style={S.label}>予算（固定）</div>
+              <div style={{ fontWeight: 900 }}>{fmt.yenM(makeupBudget)}</div>
+            </div>
+
+            <div style={{ minWidth: 320 }}>
+              <div style={S.label}>TV比率（残りがデジ）: <b>{makeTvRatio}%</b></div>
+              <input style={S.slider} type="range" min={0} max={100} step={1} value={makeTvRatio}
+                onChange={(e) => { setMakeTvRatio(Number(e.target.value)); setModeMakeup("tobe"); }} />
+              <div style={S.small}>TV {fmt.yenM(makeupInputs.tv)} ／ デジ {fmt.yenM(makeupInputs.digital)}</div>
+            </div>
+
+            <div>
+              <div style={S.label}>SNS投稿（本/週）</div>
+              <input style={S.input} type="number" min={0} max={30} step={1} value={makeSns}
+                onChange={(e) => { setMakeSns(Number(e.target.value || 0)); setModeMakeup("tobe"); }} />
+            </div>
+
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button style={S.button} onClick={applyMk}>推奨配分を入力に適用</button>
+              <button style={S.buttonGhost} onClick={() => { setMakeTvRatio(35); setMakeSns(10); setModeMakeup("tobe"); }}>リセット</button>
+            </div>
+          </div>
+
+          <hr style={S.hr} />
+
+          <div style={{ fontWeight: 900, marginBottom: 8 }}>KPI</div>
+          <div style={S.grid4}>
+            <KPI theme={THEME.makeup} title="TV：GRP（上流）" value={fmt.int(mk.grp)} />
+            <KPI theme={THEME.makeup} title="デジ：商品検索数（上流）" value={fmt.int(mk.productSearch)} />
+            <KPI theme={THEME.makeup} title="UGC数（中流）" value={fmt.int(mk.ugc)} />
+            <KPI theme={THEME.makeup} title="商品検索量（中流）" value={fmt.int(mk.searchVolume)} />
+          </div>
+          <div style={{ ...S.grid4, marginTop: 10 }}>
+            <KPI theme={THEME.makeup} title="クリエイティブ評価（中流）" value={fmt.pct1(mk.creativeScore)} hint="0〜100%相当（デモ）" />
+            <KPI theme={THEME.makeup} title="売上（proxy）" value={fmt.yenM(mk.sales)} />
+            <KPI theme={THEME.makeup} title="粗利（proxy）" value={fmt.yenM(mk.profit)} hint={`粗利率 ${(mk.gm * 100).toFixed(0)}%`} />
+            <KPI theme={THEME.makeup} title="SNS投稿（入力）" value={`${makeSns} 本/週`} />
+          </div>
+
+          <hr style={S.hr} />
+
+          <div style={S.grid2}>
+            <div style={{ borderRadius: 14, padding: 12, background: "#fff", border: `1px solid ${THEME.makeup.border}`, borderLeft: `6px solid ${THEME.makeup.main}` }}>
+              <div style={{ fontSize: 12, color: "#6b7280", fontWeight: 900 }}>推奨（粗利最大）</div>
+              <div style={{ marginTop: 6, fontWeight: 900 }}>
+                TV {fmt.yenM(recMk.tv)} / デジ {fmt.yenM(recMk.digital)} / SNS {recMk.sns}本/週
+              </div>
+              <div style={{ marginTop: 8, ...S.small }}>推奨粗利 {fmt.yenM(recMk.profit)}</div>
+            </div>
+
+            <div style={{ background: "#fff", borderRadius: 14, padding: 12, border: "1px solid #eef2f7" }}>
+              <div style={{ fontSize: 12, color: "#6b7280", fontWeight: 900 }}>チャート表示項目</div>
+              <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {(["profit","sales","ugc","searchVolume","creativeScore","grp","productSearch"] as const).map((k) => (
+                  <button key={k} style={mkMetric === k ? S.tabActive : S.tab} onClick={() => setMkMetric(k)}>{k}</button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ marginTop: 12, background: "#fff", borderRadius: 14, padding: 12, border: `1px solid ${THEME.makeup.border}`, borderLeft: `6px solid ${THEME.makeup.main}` }}>
+            <ResponsiveContainer width="100%" height={260}>
+              <LineChart data={mkSeries}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="day" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Line type="monotone" dataKey={mkMetric} name={mkMetric} stroke={THEME.makeup.main} strokeWidth={3} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+            <div style={S.small}>※ {modeMakeup.toUpperCase()} の30日傾向（デモ）</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
